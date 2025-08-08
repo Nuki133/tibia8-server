@@ -30,6 +30,7 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-boost
             mingw-w64-x86_64-sqlite3
+            git
 
       - name: Clone OTS source
         shell: msys2 {0}
