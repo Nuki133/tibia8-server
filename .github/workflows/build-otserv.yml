@@ -1,4 +1,4 @@
-name: Build OTServ 8.0 (Windows x64)
+name: Build OTServ 8.0 (Windows x64, MinGW)
 
 on:
   workflow_dispatch:
@@ -15,51 +15,56 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
 
-      - name: Install dependencies (VS2019 + CMake + Git)
-        shell: pwsh
-        run: |
-          choco install -y visualstudio2019buildtools `
-            --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 `
-            --add Microsoft.VisualStudio.Component.Windows10SDK.18362"
-          choco install -y cmake git
+      - name: Setup MSYS2 (MINGW64) + deps
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-lua51
 
       - name: Clone OTServ source
-        shell: pwsh
+        shell: msys2 {0}
         run: |
-          if ("${{ github.event.inputs.ref }}") {
+          if [ -n "${{ github.event.inputs.ref }}" ]; then
             git clone --depth 1 --branch "${{ github.event.inputs.ref }}" "${{ github.event.inputs.repo_url }}" source
-          } else {
+          else
             git clone --depth 1 "${{ github.event.inputs.repo_url }}" source
-          }
+          fi
 
-      - name: Configure (CMake x64 Release, VS2019, force C++14, SQLite=ON)
-        shell: pwsh
+      - name: Configure (CMake Release, MinGW, SQLite=ON)
+        shell: msys2 {0}
         run: |
           cd source
-          mkdir build
+          mkdir -p build
           cd build
-          cmake .. -G "Visual Studio 16 2019" -A x64 `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_CXX_STANDARD=14 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF `
-            -DCMAKE_CXX_FLAGS="/std:c++14" `
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+          cmake .. -G "MinGW Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF \
             -DSQLITE=ON
 
-      - name: Build
-        shell: pwsh
+      - name: Build (mingw32-make)
+        shell: msys2 {0}
         run: |
           cd source/build
-          cmake --build . --config Release --parallel
+          mingw32-make -j
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
           name: otserv-exe
           path: |
-            source/build/Release/otserv.exe
             source/build/otserv.exe
+            source/build/bin/otserv.exe
