@@ -2,31 +2,51 @@ name: Build OTServ 8.0 (64-bit)
 
 on:
   workflow_dispatch:
+    inputs:
+      repo_url:
+        description: 'Repozytorium do sklonowania'
+        required: true
+        default: 'https://github.com/opentibia/server.git'
+      ref:
+        description: 'Gałąź/tag/commit (zostaw puste, żeby wziąć domyślną gałąź)'
+        required: false
+        default: ''
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout this repo
         uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-          choco install cmake git
+          choco install -y visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+          choco install -y cmake git
 
-      - name: Clone OTServ source (8.0 branch)
+      - name: Clone OTServ source
+        shell: pwsh
         run: |
-          git clone --branch 8.0 https://github.com/opentibia/server.git source
+          if ("${{ github.event.inputs.ref }}") {
+            git clone --depth 1 --branch "${{ github.event.inputs.ref }}" "${{ github.event.inputs.repo_url }}" source
+          } else {
+            git clone --depth 1 "${{ github.event.inputs.repo_url }}" source
+          }
+
+      - name: Configure (CMake x64 Release)
+        run: |
+          cd source
+          cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: |
           cd source
-          cmake -S . -B build -A x64
-          cmake --build build --config Release
+          cmake --build build --config Release --parallel
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
           name: otserv-exe
-          path: source/build/Release/otserv.exe
+          path: |
+            source/build/Release/otserv.exe
+            source/build/otserv.exe
