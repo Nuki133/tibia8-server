@@ -1,74 +1,64 @@
-name: Build OTS (Windows x64, MinGW)
+name: Build OTS (Windows x64)
 
 on:
   workflow_dispatch:
     inputs:
-      source_repo:
-        description: 'Source OTS repo (user/repo)'
+      ots_repo:
+        description: 'Repozytorium OTS (np. opentibiabr/otservbr-global-archived)'
         required: true
         default: 'opentibiabr/otservbr-global-archived'
-      source_ref:
-        description: 'Branch/tag/commit of OTS repo'
+      ots_branch:
+        description: 'Gałąź/tag/commit (np. develop)'
         required: true
         default: 'develop'
 
 jobs:
   build:
     runs-on: windows-2022
-    permissions:
-      contents: read
 
     steps:
-    - name: Checkout this repo
-      uses: actions/checkout@v4
+      - name: Checkout this repository
+        uses: actions/checkout@v4
 
-    - name: Setup MSYS2 (MINGW64)
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: >-
-          git
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-make
-          mingw-w64-x86_64-boost
-          mingw-w64-x86_64-sqlite3
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-cryptopp
 
-    - name: Extra pacman sync (belt & suspenders)
-      shell: msys2 {0}
-      run: |
-        pacman -Syu --noconfirm
-        pacman -S --noconfirm --needed \
-          mingw-w64-x86_64-boost \
-          mingw-w64-x86_64-sqlite3
+      - name: Sync pacman and install missing dependencies
+        shell: msys2 {0}
+        run: |
+          pacman -Syu --noconfirm
 
-    - name: Clone OTServ source (fast)
-      shell: msys2 {0}
-      run: |
-        git clone --depth=1 --branch "${{ github.event.inputs.source_ref }}" https://github.com/${{ github.event.inputs.source_repo }} source
+      - name: Clone OTS source
+        shell: msys2 {0}
+        run: |
+          git clone https://github.com/${{ github.event.inputs.ots_repo }} --branch ${{ github.event.inputs.ots_branch }} --depth 1 src
 
-    - name: Configure (CMake Release, MinGW, SQLite=ON)
-      shell: msys2 {0}
-      run: |
-        cmake -S source -B build \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DWITH_SQLITE=ON \
-          -DBOOST_ROOT=/mingw64 \
-          -DBOOST_INCLUDEDIR=/mingw64/include \
-          -DBOOST_LIBRARYDIR=/mingw64/lib
+      - name: Configure with CMake
+        shell: msys2 {0}
+        run: |
+          cmake -S src -B build -G "MinGW Makefiles" -DUSE_SQLITE=ON -DCMAKE_BUILD_TYPE=Release
 
-    - name: Build (cmake --build)
-      shell: msys2 {0}
-      run: cmake --build build --parallel
+      - name: Build with mingw32-make
+        shell: msys2 {0}
+        run: |
+          cmake --build build --config Release
 
-    - name: List build output
-      shell: msys2 {0}
-      run: ls -R build || true
+      - name: List build output
+        shell: msys2 {0}
+        run: |
+          ls -R build
 
-    - name: Upload full build folder
-      uses: actions/upload-artifact@v4
-      with:
-        name: ots-build
-        path: build/
-        if-no-files-found: error
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: otserv-executable
+          path: build/
