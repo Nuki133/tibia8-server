@@ -30,7 +30,7 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-boost
             mingw-w64-x86_64-sqlite3
-            mingw-w64-x86_64-cryptopp
+            cryptopp
 
       - name: Sync pacman and install missing dependencies
         shell: msys2 {0}
