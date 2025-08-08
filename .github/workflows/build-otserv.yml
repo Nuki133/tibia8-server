@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       ots_repo:
-        description: 'Repozytorium OTS (np. opentibiabr/otservbr-global-archived)'
+        description: 'Repozytorium OTS (np. twój-fork/otservbr-global-archived)'
         required: true
-        default: 'opentibiabr/otservbr-global-archived'
+        default: 'twoj-login/otservbr-global-archived'
       ots_branch:
         description: 'Gałąź/tag/commit (np. develop)'
         required: true
@@ -30,7 +30,6 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-boost
             mingw-w64-x86_64-sqlite3
-            cryptopp
 
       - name: Sync pacman and install missing dependencies
         shell: msys2 {0}
@@ -51,11 +50,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cmake --build build --config Release
-
-      - name: List build output
-        shell: msys2 {0}
-        run: |
-          ls -R build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
