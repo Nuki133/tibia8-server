@@ -27,6 +27,7 @@ jobs:
             --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 `
             --add Microsoft.VisualStudio.Component.Windows10SDK.18362"
           choco install -y cmake git
+          cmake --version
 
       - name: Clone OTServ source
         shell: pwsh
@@ -37,19 +38,23 @@ jobs:
             git clone --depth 1 "${{ github.event.inputs.repo_url }}" source
           }
 
-      - name: Configure (CMake x64 Release, VS2019)
+      - name: Configure (CMake x64 Release, VS2019, C++11)
         shell: pwsh
         run: |
           cd source
-          cmake -S . -B build -G "Visual Studio 16 2019" -A x64 `
+          mkdir build
+          cd build
+          # Używamy klasycznej składni "cmake .." (bez -S/-B), ustawiamy C++11 i policy minimum
+          cmake .. -G "Visual Studio 16 2019" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5.0
+            -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF `
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Build
         shell: pwsh
         run: |
-          cd source
-          cmake --build build --config Release --parallel
+          cd source/build
+          cmake --build . --config Release --parallel
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
@@ -58,3 +63,4 @@ jobs:
           path: |
             source/build/Release/otserv.exe
             source/build/otserv.exe
+
