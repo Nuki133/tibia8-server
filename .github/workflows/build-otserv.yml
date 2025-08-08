@@ -58,8 +58,11 @@ jobs:
       shell: msys2 {0}
       run: cmake --build build --parallel
 
-    # Jeśli nie wiesz jak nazywa się exe, wrzuć cały folder build jako artefakt
-    - name: Upload build folder
+    - name: List build output
+      shell: msys2 {0}
+      run: ls -R build
+
+    - name: Upload full build folder
       uses: actions/upload-artifact@v4
       with:
         name: ots-build
