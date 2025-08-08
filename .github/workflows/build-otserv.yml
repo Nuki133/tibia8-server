@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       ots_repo:
-        description: 'Repozytorium OTS (np. twój-fork/otservbr-global-archived)'
+        description: 'Repozytorium OTS (np. twoj-login/otservbr-global-archived)'
         required: true
         default: 'twoj-login/otservbr-global-archived'
       ots_branch:
@@ -30,11 +30,6 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-boost
             mingw-w64-x86_64-sqlite3
-
-      - name: Sync pacman and install missing dependencies
-        shell: msys2 {0}
-        run: |
-          pacman -Syu --noconfirm
 
       - name: Clone OTS source
         shell: msys2 {0}
