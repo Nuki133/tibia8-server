@@ -1,73 +1,63 @@
-name: Build OTServ 8.0 (Windows x64, MinGW)
+name: Build OTS (Windows x64, MinGW)
 
 on:
   workflow_dispatch:
     inputs:
-      self_ref:
-        description: 'Gałąź tego repo (tibia8-server), z której ma pójść workflow'
-        default: 'main'
-        required: true
       source_repo:
-        description: 'Repozytorium ze źródłami OTServ do sklonowania'
+        description: 'Source OTS repo (user/repo)'
+        required: true
         default: 'opentibiabr/otservbr-global-archived'
-        required: true
       source_ref:
-        description: 'Gałąź/tag/commit źródeł OTServ'
-        default: 'develop'
+        description: 'Branch/tag/commit of OTS repo'
         required: true
+        default: 'develop'
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      # Ten checkout jest tylko po to, by pobrać bieżący workflow z wybranej gałęzi tego repo
-      - name: Checkout this repo
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.self_ref }}
+    - name: Checkout this repo
+      uses: actions/checkout@v3
 
-      - name: Setup MSYS2 (MINGW64) + deps
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            git
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-boost
-            mingw-w64-x86_64-sqlite3
+    - name: Setup MSYS2 (MINGW64) + deps
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        install: >-
+          git
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-boost
+          mingw-w64-x86_64-boost-headers
+          mingw-w64-x86_64-boost-libs
+          mingw-w64-x86_64-SDL2
+          mingw-w64-x86_64-SDL2_image
+          mingw-w64-x86_64-SDL2_mixer
+          mingw-w64-x86_64-SDL2_ttf
 
-      # Szybkie klonowanie źródeł OTServ (z repo i gałęzi podanych przy uruchamianiu)
-      - name: Clone OTServ source (fast)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.source_repo }}
-          ref: ${{ github.event.inputs.source_ref }}
-          path: source
-          fetch-depth: 1
-          lfs: false
+    - name: Clone OTServ source (fast)
+      shell: msys2 {0}
+      run: |
+        git clone --depth=1 --branch "${{ github.event.inputs.source_ref }}" https://github.com/${{ github.event.inputs.source_repo }} source
 
-      - name: Configure (CMake Release, MinGW, SQLite=ON)
-        shell: bash
-        run: |
-          cmake -S source -B build \
-            -G "MinGW Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DUSE_SQLITE=ON
+    - name: Configure (CMake Release, MinGW, SQLite=ON)
+      shell: msys2 {0}
+      run: |
+        cmake -S source -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DWITH_SQLITE=ON \
+          -DBOOST_ROOT=/mingw64 \
+          -DBOOST_INCLUDEDIR=/mingw64/include \
+          -DBOOST_LIBRARYDIR=/mingw64/lib
 
-      - name: Build (cmake --build)
-        shell: bash
-        run: |
-          cmake --build build --config Release -j"$(nproc || echo 4)"
+    - name: Build (cmake --build)
+      shell: msys2 {0}
+      run: cmake --build build --parallel
 
-      - name: Upload executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: otserv-windows-x64-sqlite
-          path: |
-            build/*.exe
-            build/*.dll
-            build/*.pdb
-          if-no-files-found: warn
+    - name: Upload executable
+      uses: actions/upload-artifact@v3
+      with:
+        name: otserv-executable
+        path: build/theforgottenserver.exe
