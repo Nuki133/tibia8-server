@@ -14,11 +14,13 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout this repo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup MSYS2 (MINGW64) + deps
       uses: msys2/setup-msys2@v2
@@ -56,8 +58,10 @@ jobs:
       shell: msys2 {0}
       run: cmake --build build --parallel
 
-    - name: Upload executable
-      uses: actions/upload-artifact@v3
+    # Jeśli nie wiesz jak nazywa się exe, wrzuć cały folder build jako artefakt
+    - name: Upload build folder
+      uses: actions/upload-artifact@v4
       with:
-        name: otserv-executable
-        path: build/theforgottenserver.exe
+        name: ots-build
+        path: build/
+        if-no-files-found: error
