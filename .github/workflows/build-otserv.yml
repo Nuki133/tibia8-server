@@ -1,4 +1,4 @@
-name: Build OTServ 8.0 (Linux x64)
+name: Build OTServ 8.0 (Windows x64)
 
 on:
   workflow_dispatch:
@@ -14,37 +14,44 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
 
-      - name: Install dependencies (Ubuntu)
+      - name: Install dependencies (VS2019 + CMake + Git)
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake git libssl-dev liblua5.1-0-dev zlib1g-dev
+          choco install -y visualstudio2019buildtools `
+            --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            --add Microsoft.VisualStudio.Component.VC.v141.x86.x64 `
+            --add Microsoft.VisualStudio.Component.Windows10SDK.18362"
+          choco install -y cmake git
 
       - name: Clone OTServ source
-        shell: bash
+        shell: pwsh
         run: |
-          if [ -n "${{ github.event.inputs.ref }}" ]; then
+          if ("${{ github.event.inputs.ref }}") {
             git clone --depth 1 --branch "${{ github.event.inputs.ref }}" "${{ github.event.inputs.repo_url }}" source
-          else
+          } else {
             git clone --depth 1 "${{ github.event.inputs.repo_url }}" source
-          fi
+          }
 
-      - name: Configure (CMake Release, GCC)
-        shell: bash
-        env:
-          CMAKE_ARGS: ""   # wyczyść ewentualne globalne -S/-B
+      - name: Configure (CMake x64 Release, VS2019, force C++14, SQLite=ON)
+        shell: pwsh
         run: |
           cd source
-          mkdir -p build
+          mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake .. -G "Visual Studio 16 2019" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_CXX_STANDARD=14 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF `
+            -DCMAKE_CXX_FLAGS="/std:c++14" `
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+            -DSQLITE=ON
 
       - name: Build
-        shell: bash
+        shell: pwsh
         run: |
           cd source/build
           cmake --build . --config Release --parallel
@@ -52,7 +59,7 @@ jobs:
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
-          name: otserv-linux
+          name: otserv-exe
           path: |
-            source/build/otserv
-            source/build/bin/otserv
+            source/build/Release/otserv.exe
+            source/build/otserv.exe
