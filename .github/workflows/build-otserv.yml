@@ -26,12 +26,13 @@ jobs:
       # <<< TO JEST NOWY, SZYBKI KROK KLONOWANIA >>>
       - name: Clone OTServ source (fast)
         uses: actions/checkout@v4
-        with:
-          repository: opentibiabr/otservbr-global-archived
-          ref: develop
-          path: source
-          fetch-depth: 1
-          lfs: false
+with:
+  repository: opentibiabr/otservbr-global-archived
+  ref: develop
+  path: source
+  fetch-depth: 1
+  lfs: false
+
 
       - name: Configure (CMake Release, MinGW, SQLite=ON)
         shell: bash
